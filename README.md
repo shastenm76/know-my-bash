@@ -1,5 +1,7 @@
 # Know My Bash Toolkit
 
+[![Know My Bash Toolkit Demo](https://imgur.com/a/vAVME2Z)](https://youtu.be/Mwkfrb-sUME)
+
 This repository contains a collection of Bash and Python scripts designed to enhance productivity within the Bash shell. This toolkit was developed as a response to the perceived bloat and complexity of other shells like Zsh and Fish when working with plugins.
 
 ## Features
