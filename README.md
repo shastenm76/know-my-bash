@@ -85,6 +85,7 @@ set -g @plugin 'shastenm76/popup-history'
 # Feedback and Contributions
 I'd love to hear your feedback! If you encounter any issues or have suggestions for improvement, please open an issue or submit a pull request.
 
+[![Know My Bash Toolkit tutorial](https://i.imgur.com/MUthHFV.png)](https://youtu.be/R3lsBudaaT0)
 # License
 This project is licensed under the GPL License.
 
