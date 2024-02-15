@@ -1,0 +1,67 @@
+#!/usr/bin/env python3
+
+import os
+import subprocess
+
+def get_bash_history_matches(word):
+    # Get the user's home directory
+    home_directory = os.path.expanduser("~")
+
+    # Specify the path to the Bash history file
+    history_file = os.path.join(home_directory, ".bash_history")
+
+    try:
+        # Read the Bash history file and find lines containing the specified word
+        with open(history_file, "r") as file:
+            history_lines = [line.strip() for line in file if word in line]
+
+        return history_lines
+    except FileNotFoundError:
+        print("Bash history file not found. Exiting.")
+        return []
+
+def main():
+    # Get user input for the word
+    search_word = input("Enter a word to search in Bash history: ").strip()
+
+    if not search_word:
+        print("No word provided. Exiting.")
+        return
+
+    # Get Bash history matches for the specified word
+    history_matches = get_bash_history_matches(search_word)
+
+    if not history_matches:
+        print("No matches found. Exiting.")
+        return
+
+    # Count the occurrences of each unique command
+    command_counts = {}
+    for line in history_matches:
+        # Split the line into a list with at least two elements
+        split_line = line.split(maxsplit=1)
+        if len(split_line) >= 2:
+            command = split_line[1]  # Extract the command part
+            command_counts[command] = command_counts.get(command, 0) + 1
+
+    # Display the top 15 most frequent commands
+    print("Top 15 Most Frequent Commands:")
+    for i, (command, count) in enumerate(sorted(command_counts.items(), key=lambda x: x[1], reverse=True)[:15], start=1):
+        print(f"{i}: {count} occurrences - {command}")
+
+    # Get user input for selecting a number
+    try:
+        selected_number = int(input("Enter the number to copy to clipboard (or press Enter to exit):"))
+        selected_command = sorted(command_counts.items(), key=lambda x: x[1], reverse=True)[selected_number - 1][0]
+        print(f"Selected: {selected_command}")
+        # Copy the selected command to the clipboard
+        try:
+            subprocess.run(["xclip", "-selection", "c"], input=selected_command.encode(), check=True)
+            print("Copied to clipboard.")
+        except subprocess.CalledProcessError:
+            print("Failed to copy to clipboard.")
+    except ValueError:
+        print("Exiting.")
+
+if __name__ == "__main__":
+    main()

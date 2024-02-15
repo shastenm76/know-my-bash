@@ -1,0 +1,89 @@
+#!/usr/bin/env python3
+
+import os
+import subprocess
+
+def list_predefined_directories():
+    predefined_directories = [
+        os.path.expanduser("~/.bash"),
+        os.path.expanduser("~/.config/alacritty"),
+        os.path.expanduser("~/.config/dmenu"),
+        os.path.expanduser("~/.config/dwm"),
+        os.path.expanduser("~/.config/nvim"),
+        os.path.expanduser("~/.config/slstatus"),
+        os.path.expanduser("~/.config/st"),
+        os.path.expanduser("~/.config/zathura"),
+        os.path.expanduser("~/.config/zellij"),
+        os.path.expanduser("~/.local/bin/scripts"),
+        os.path.expanduser("~/.local/bin"),
+        os.path.expanduser("~/.local/share"),
+        os.path.expanduser("~/.tmux"),
+        os.path.expanduser("~/bin"),
+        os.path.expanduser("~/Desktop"),
+        os.path.expanduser("~/Documents"),
+        os.path.expanduser("~/Downloads"),
+    ]
+
+    print("Choose a directory:")
+    for i, directory in enumerate(predefined_directories, start=1):
+        print(f"{chr(ord('a') + i - 1)}. {directory}")
+
+    try:
+        choice = input("Enter the letter (0 to exit): ").lower()
+        if choice == '0':
+            exit()
+
+        selected_index = ord(choice) - ord('a') + 1
+        if 0 < selected_index <= len(predefined_directories):
+            selected_directory = predefined_directories[selected_index - 1]
+            list_directories(selected_directory)
+        else:
+            print("Invalid choice. Exiting.")
+    except ValueError:
+        print("Invalid input. Exiting.")
+
+def list_directories(directory):
+    try:
+        subdirectories = [d for d in os.listdir(directory) if os.path.isdir(os.path.join(directory, d))]
+
+        if not subdirectories:
+            run_original_script(directory)
+        else:
+            print(f"\nDirectories inside {directory}:")
+            for i, subdirectory in enumerate(subdirectories, start=1):
+                print(f"{chr(ord('a') + i - 1)}. {subdirectory}")
+
+            try:
+                choice = input("Enter the letter (0 to exit, Enter to copy current directory): ").lower()
+                if not choice:
+                    run_original_script(directory)
+                elif choice == '0':
+                    exit()
+                else:
+                    if choice and len(choice) == 1:  # Check if the string is not empty and has length 1
+                        selected_index = ord(choice) - ord('a') + 1
+                        if 0 < selected_index <= len(subdirectories):
+                            selected_subdirectory = os.path.join(directory, subdirectories[selected_index - 1])
+                            list_directories(selected_subdirectory)
+                        else:
+                            print("Invalid choice. Exiting.")
+                    else:
+                        print("Invalid input. Exiting.")
+            except ValueError:
+                print("Invalid input. Exiting.")
+    except OSError:
+        print(f"Error: Unable to list directories inside {directory}. Exiting.")
+
+def run_original_script(directory):
+    print(f"\nSelected directory: {directory}")
+    try:
+        subprocess.run(['xclip', '-selection', 'clipboard'], input=directory.encode('utf-8'), check=True)
+        print("Path copied to clipboard.")
+    except subprocess.CalledProcessError as e:
+        print(f"Error: {e}")
+
+def main():
+    list_predefined_directories()
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,160 @@
+#!/usr/bin/env bash
+
+fail() {
+  >&2 echo "$1"
+  exit 2
+}
+
+fzf="$(command -v fzf 2> /dev/null)" || fzf="$(dirname "$0")/fzf"
+[[ -x "$fzf" ]] || fail 'fzf executable not found'
+
+args=()
+opt=""
+swap=""
+close=""
+term=""
+[[ -n "$LINES" ]] && lines=$LINES || lines=$(tput lines) || lines=$(tmux display-message -p "#{pane_height}")
+[[ -n "$COLUMNS" ]] && columns=$COLUMNS || columns=$(tput cols) || columns=$(tmux display-message -p "#{pane_width}")
+
+help() {
+  >&2 echo 'usage: fzf-tmux [LAYOUT OPTIONS] [--] [FZF OPTIONS]
+
+  LAYOUT OPTIONS:
+    (default layout: -d 50%)
+
+    Popup window (requires tmux 3.2 or above):
+      -p [WIDTH[%][,HEIGHT[%]]]  (default: 50%)
+      -w WIDTH[%]
+      -h HEIGHT[%]
+      -x COL
+      -y ROW
+
+    Split pane:
+      -u [HEIGHT[%]]             Split above (up)
+      -d [HEIGHT[%]]             Split below (down)
+      -l [WIDTH[%]]              Split left
+      -r [WIDTH[%]]              Split right
+'
+  exit
+}
+
+while [[ $# -gt 0 ]]; do
+  arg="$1"
+  shift
+  case "$arg" in
+    -)
+      term=1
+      ;;
+    --help)
+      help
+      ;;
+    --version)
+      echo "fzf-tmux (with fzf $("$fzf" --version))"
+      exit
+      ;;
+    -p*|-w*|-h*|-x*|-y*|-d*|-u*|-r*|-l*)
+      if [[ "$arg" =~ ^-[pwhxy] ]]; then
+        opt="-E"
+      elif [[ "$arg" =~ ^.[lr] ]]; then
+        opt="-h"
+        if [[ "$arg" =~ ^.l ]]; then
+          opt="$opt -d"
+          swap="; swap-pane -D ; select-pane -L"
+          close="; tmux swap-pane -D"
+        fi
+      else
+        opt=""
+        if [[ "$arg" =~ ^.u ]]; then
+          opt="$opt -d"
+          swap="; swap-pane -D ; select-pane -U"
+          close="; tmux swap-pane -D"
+        fi
+      fi
+      if [[ ${#arg} -gt 2 ]]; then
+        size="${arg:2}"
+      else
+        if [[ "$1" =~ ^[0-9%,]+$ ]] || [[ "$1" =~ ^[A-Z]$ ]]; then
+          size="$1"
+          shift
+        else
+          continue
+        fi
+      fi
+
+      if [[ "$arg" =~ ^-p ]]; then
+        if [[ -n "$size" ]]; then
+          w=${size%%,*}
+          h=${size##*,}
+          opt="$opt -w$w -h$h"
+        fi
+      elif [[ "$arg" =~ ^-[whxy] ]]; then
+        opt="$opt ${arg:0:2}$size"
+      elif [[ "$size" =~ %$ ]]; then
+        size=${size:0:((${#size}-1))}
+        if [[ -n "$swap" ]]; then
+          opt="$opt -p $(( 100 - size ))"
+        else
+          opt="$opt -p $size"
+        fi
+      else
+        if [[ -n "$swap" ]]; then
+          if [[ "$arg" =~ ^.l ]]; then
+            max=$columns
+          else
+            max=$lines
+          fi
+          size=$(( max - size ))
+          [[ $size -lt 0 ]] && size=0
+          opt="$opt -l $size"
+        else
+          opt="$opt -l $size"
+        fi
+      fi
+      ;;
+    --)
+      # "--" can be used to separate fzf-tmux options from fzf options to
+      # avoid conflicts
+      shift
+      break
+      ;;
+    *)
+      args+=("$arg")
+      ;;
+  esac
+done
+
+open_file() {
+  local file="$1"
+  case "$file" in
+    *.pdf)
+      zathura "$file"
+      ;;
+    *.py|*.go|*.sh)
+      nvim "$file"
+      ;;
+    *.mp4|*.mp3)
+      mpv "$file"
+      ;;
+    *.jpg|*.png)
+      sxiv "$file"
+      ;;
+    *)
+      echo "File type not recognized for: $file"
+      read -p "What app would you like to open this? " custom_app
+      if [ -n "$custom_app" ]; then
+        eval "$custom_app" "$file"
+      else
+        echo "Skipping file: $file"
+      fi
+      ;;
+  esac
+}
+
+# Redirect fzf output to a variable
+selected_files=$("$fzf" "${args[@]}")
+
+# Process selected files
+for selected_file in $selected_files; do
+  open_file "$selected_file"
+done
+

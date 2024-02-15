@@ -1,0 +1,79 @@
+#!/usr/bin/env python3
+import subprocess
+import sys
+import os
+
+HISTORY_FILE = os.path.expanduser("~/.bash_history")
+
+def copy_to_clipboard(command):
+    subprocess.run(['xclip', '-selection', 'clipboard'], input=command.encode('utf-8'))
+    print(f'Command copied to clipboard: {command}')
+
+def handle_number_range(start, end):
+    commands = []
+    with open(HISTORY_FILE, 'r') as history_file:
+        for line in history_file:
+            parts = line.strip().split(maxsplit=1)
+            if len(parts) > 1 and parts[0] == str(start):
+                commands.append(parts[1])
+                start += 1
+                if start > end:
+                    break
+    commands_str = '; '.join(commands)
+    copy_to_clipboard(commands_str)
+
+def copy_single_command(number):
+    with open(HISTORY_FILE, 'r') as history_file:
+        command = next((parts[1] for line in history_file if (parts := line.strip().split(maxsplit=1)) and len(parts) > 1 and parts[0] == str(number)), None)
+    if command:
+        copy_to_clipboard(command)
+        print(f"Command with number {number} copied to clipboard.")
+    else:
+        print(f"Command with number {number} not found in history.")
+
+def list_commands():
+    unique_commands = set()
+    with open(HISTORY_FILE, 'r') as history_file:
+        for line in history_file:
+            parts = line.strip().split(maxsplit=1)
+            if len(parts) > 1:
+                unique_commands.add(parts[1])
+
+    for i, command in enumerate(unique_commands, start=1):
+        print(f"{i}. {command}")
+
+    return unique_commands
+
+def main():
+    if not os.path.exists(H/home/shasten/bin/navigationISTORY_FILE):
+        print("Bash history file not found.")
+        sys.exit(1)
+
+    if len(sys.argv) == 1:
+        # If no arguments are provided, list all unique commands from the bash history
+        unique_commands = list_commands()
+
+        # Prompt for user input to choose which command(s) to copy
+        user_input = input("Enter the number(s) of the command(s) to copy to clipboard (comma-separated): ")
+        try:
+            selected_numbers = [int(num) for num in user_input.split(',')]
+            selected_commands = [list(unique_commands)[num - 1] for num in selected_numbers if 1 <= num <= len(unique_commands)]
+            commands_str = '; '.join(selected_commands)
+            copy_to_clipboard(commands_str)
+        except ValueError:
+            print("Invalid input. Please enter valid numbers separated by commas.")
+    elif len(sys.argv) == 2 and sys.argv[1].isdigit():
+        # If a single number is provided, copy the corresponding command to the clipboard
+        copy_single_command(int(sys.argv[1]))
+    elif len(sys.argv) == 4 and sys.argv[1].isdigit() and sys.argv[2] == '-' and sys.argv[3].isdigit():
+        # If three arguments with proper format are provided, handle number range
+        handle_number_range(int(sys.argv[1]), int(sys.argv[3]))
+    else:
+        # If invalid input, display usage
+        print("Usage: ./script.py [number] or ./script.py [start] [end]")
+        print("If no arguments are provided, list all unique commands from the bash history and prompt for copying.")
+        print("If a single number is provided, copy the corresponding command to the clipboard.")
+        print("If three arguments with the format 'start - end' are provided, copy commands in the specified range to the clipboard.")
+
+if __name__ == "__main__":
+    main()
